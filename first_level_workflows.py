@@ -49,83 +49,133 @@ CONTRAST_TYPES = {
 # CONTRAST GENERATION FUNCTIONS
 # =============================================================================
 
-def extract_cs_conditions(condition_names):
+def extract_cs_conditions(df_trial_info):
     """
-    Extract and group CS- conditions from a list of condition names.
+    Extract and group CS-, CSS, and CSR conditions from a pandas DataFrame.
     
-    This function identifies CS-_first and CS-_others conditions that were already created
-    by the earlier processing, and separates them from other trial types.
+    This function adds a 'conditions' column to the DataFrame that groups trials:
+    - First trial of each CS type becomes 'CS-_first', 'CSS_first', 'CSR_first'
+    - Remaining trials of each type become 'CS-_others', 'CSS_others', 'CSR_others'
+    - All other trials keep their original trial_type as conditions value
     
     Args:
-        condition_names (list): List of condition names (already processed with CS-_first, CS-_others)
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+                                        The 'trial_type' column contains condition names,
+                                        and 'onset' column is used for chronological sorting.
     
     Returns:
-        tuple: (cs_first_trial, cs_other_trials, other_conditions)
-            - cs_first_trial: The CS-_first condition if found
-            - cs_other_trials: The CS-_others condition if found
-            - other_conditions: List of non-CS conditions
+        tuple: (df_with_conditions, cs_conditions, css_conditions, csr_conditions, other_conditions)
+            - df_with_conditions: DataFrame with added 'conditions' column
+            - cs_conditions: dict with 'first' and 'other' keys for CS- conditions
+            - css_conditions: dict with 'first' and 'other' keys for CSS conditions  
+            - csr_conditions: dict with 'first' and 'other' keys for CSR conditions
+            - other_conditions: List of non-CS/CSS/CSR conditions
     """
-    cs_first_trial = None
-    cs_other_trials = []
-    other_conditions = []
+    import pandas as pd
     
-    # Check if CS-_first and CS-_others are already in the condition names
-    if 'CS-_first' in condition_names:
-        cs_first_trial = 'CS-_first'
-        logger.info(f"Found CS-_first condition")
+    # Validate DataFrame input
+    if not isinstance(df_trial_info, pd.DataFrame):
+        raise ValueError("df_trial_info must be a pandas DataFrame")
     
-    if 'CS-_others' in condition_names:
-        cs_other_trials = ['CS-_others']  # Represent as list for consistency
-        logger.info(f"Found CS-_others condition")
+    if df_trial_info.empty:
+        raise ValueError("DataFrame cannot be empty")
     
-    # Process all other conditions (non-CS conditions)
-    for condition in condition_names:
-        if condition not in ['CS-_first', 'CS-_others']:
-            other_conditions.append(condition)
+    required_columns = ['trial_type', 'onset']
+    missing_columns = [col for col in required_columns if col not in df_trial_info.columns]
+    if missing_columns:
+        raise ValueError(f"DataFrame missing required columns: {missing_columns}")
     
-    if cs_first_trial or cs_other_trials:
-        logger.info(f"CS- conditions identified: {cs_first_trial}, {cs_other_trials}")
-        logger.info(f"Other trial types as individual conditions: {other_conditions}")
-    else:
-        logger.info(f"No CS- conditions found. All conditions: {other_conditions}")
+    # Create a copy to avoid modifying original
+    df_work = df_trial_info.copy()
     
-    return cs_first_trial, cs_other_trials, other_conditions
+    # Initialize conditions column with trial_type values
+    df_work['conditions'] = df_work['trial_type'].copy()
+    
+    logger.info(f"Using DataFrame input with {len(df_work)} trials")
+    logger.info(f"DataFrame columns: {list(df_work.columns)}")
+    
+    # Find first trial of each CS type (by onset time)
+    cs_trials = df_work[df_work['trial_type'].str.startswith('CS-') & 
+                       ~df_work['trial_type'].str.startswith('CSS') & 
+                       ~df_work['trial_type'].str.startswith('CSR')].copy()
+    css_trials = df_work[df_work['trial_type'].str.startswith('CSS')].copy()
+    csr_trials = df_work[df_work['trial_type'].str.startswith('CSR')].copy()
+    
+    # Update conditions column for CS- trials
+    if not cs_trials.empty:
+        cs_first_idx = cs_trials.sort_values('onset').index[0]
+        df_work.loc[cs_first_idx, 'conditions'] = 'CS-_first'
+        cs_other_indices = cs_trials[cs_trials.index != cs_first_idx].index
+        df_work.loc[cs_other_indices, 'conditions'] = 'CS-_others'
+        logger.info(f"CS- conditions: first trial at index {cs_first_idx}, {len(cs_other_indices)} others")
+    
+    # Update conditions column for CSS trials
+    if not css_trials.empty:
+        css_first_idx = css_trials.sort_values('onset').index[0]
+        df_work.loc[css_first_idx, 'conditions'] = 'CSS_first'
+        css_other_indices = css_trials[css_trials.index != css_first_idx].index
+        df_work.loc[css_other_indices, 'conditions'] = 'CSS_others'
+        logger.info(f"CSS conditions: first trial at index {css_first_idx}, {len(css_other_indices)} others")
+    
+    # Update conditions column for CSR trials
+    if not csr_trials.empty:
+        csr_first_idx = csr_trials.sort_values('onset').index[0]
+        df_work.loc[csr_first_idx, 'conditions'] = 'CSR_first'
+        csr_other_indices = csr_trials[csr_trials.index != csr_first_idx].index
+        df_work.loc[csr_other_indices, 'conditions'] = 'CSR_others'
+        logger.info(f"CSR conditions: first trial at index {csr_first_idx}, {len(csr_other_indices)} others")
+    
+    # Get unique conditions for contrast generation
+    unique_conditions = df_work['conditions'].unique().tolist()
+    logger.info(f"Unique conditions for contrast generation: {unique_conditions}")
+    
+    # Extract grouped conditions for backward compatibility
+    cs_conditions = {'first': 'CS-_first' if 'CS-_first' in unique_conditions else None, 
+                     'other': ['CS-_others'] if 'CS-_others' in unique_conditions else []}
+    css_conditions = {'first': 'CSS_first' if 'CSS_first' in unique_conditions else None, 
+                      'other': ['CSS_others'] if 'CSS_others' in unique_conditions else []}
+    csr_conditions = {'first': 'CSR_first' if 'CSR_first' in unique_conditions else None, 
+                      'other': ['CSR_others'] if 'CSR_others' in unique_conditions else []}
+    
+    # Get other conditions (non-CS/CSS/CSR)
+    other_conditions = df_work[~df_work['trial_type'].str.startswith('CS')]['trial_type'].unique().tolist()
+    
+    logger.info(f"Processed conditions: CS-={cs_conditions}, CSS={css_conditions}, CSR={csr_conditions}")
+    logger.info(f"Other conditions: {other_conditions}")
+    
+    return df_work, cs_conditions, css_conditions, csr_conditions, other_conditions
 
 
-def create_contrasts(condition_names, contrast_type='standard'):
+def create_contrasts(df_trial_info, contrast_type='standard'):
     """
-    Create contrasts dynamically based on condition names.
+    Create contrasts dynamically based on DataFrame with CS-, CSS, and CSR grouping.
     
-    This function identifies the first trial of CS- conditions as a separate condition,
-    groups all other CS- trials together as one condition, and creates contrasts for
-    all other trial types as individual conditions.
+    This function identifies the first trial of each condition type (CS-, CSS, CSR) as 
+    separate conditions, groups all other trials of each type together, and creates 
+    contrasts for all other trial types as individual conditions.
     
     Args:
-        condition_names (list): List of condition names
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+                                        The 'trial_type' column contains condition names,
+                                        and 'onset' column is used for chronological sorting.
         contrast_type (str): Type of contrasts to create ('standard', 'minimal', 'custom')
     
     Returns:
-        tuple: (contrasts_list, cs_first_trial, cs_other_trials, other_conditions)
+        tuple: (contrasts_list, cs_conditions, css_conditions, csr_conditions, other_conditions)
             - contrasts_list: List of contrast tuples (name, type, conditions, weights)
-            - cs_first_trial: The first trial of CS- conditions found (or None)
-            - cs_other_trials: List of all other CS- trials (grouped together)
-            - other_conditions: List of non-CS conditions
+            - cs_conditions: dict with 'first' and 'other' keys for CS- conditions
+            - css_conditions: dict with 'first' and 'other' keys for CSS conditions
+            - csr_conditions: dict with 'first' and 'other' keys for CSR conditions
+            - other_conditions: List of non-CS/CSS/CSR conditions
     """
-    if not condition_names:
-        logger.warning("No condition names provided, returning empty contrasts list")
-        return [], None, [], []
+    if df_trial_info is None:
+        raise ValueError("df_trial_info is required")
     
-    # Extract CS- conditions with grouping
-    cs_first_trial, cs_other_trials, other_conditions = extract_cs_conditions(condition_names)
+    # Extract CS-, CSS, and CSR conditions with grouping
+    df_with_conditions, cs_conditions, css_conditions, csr_conditions, other_conditions = extract_cs_conditions(df_trial_info)
     
-    # Create list of all conditions for contrast generation
-    all_contrast_conditions = []
-    if cs_first_trial:
-        all_contrast_conditions.append(cs_first_trial)  # CS-_first as separate condition
-    if cs_other_trials:
-        # Group all other CS- trials into single 'CS-_others' condition
-        all_contrast_conditions.append('CS-_others')  # Single grouped condition for all other CS- trials
-    all_contrast_conditions.extend(other_conditions)
+    # Use the conditions column for contrast generation
+    all_contrast_conditions = df_with_conditions['conditions'].unique().tolist()
     
     contrasts = []
     
@@ -157,93 +207,135 @@ def create_contrasts(condition_names, contrast_type='standard'):
                     contrasts.append((f'{f_cond}<{base_cond}', 'T', [f_cond, base_cond], [-1, 1]))
     
     logger.info(f"Generated {len(contrasts)} contrasts for {len(all_contrast_conditions)} conditions:")
-    if cs_first_trial:
-        logger.info(f"  - First CS- trial: {cs_first_trial} (kept as separate condition)")
-    if cs_other_trials:
-        logger.info(f"  - Other CS- trials: {cs_other_trials} (grouped into single 'CS-_others' condition)")
+    if cs_conditions['first']:
+        logger.info(f"  - CS- first trial: {cs_conditions['first']} (separate condition)")
+    if cs_conditions['other']:
+        logger.info(f"  - CS- other trials: {cs_conditions['other']} (grouped as 'CS-_others')")
+    if css_conditions['first']:
+        logger.info(f"  - CSS first trial: {css_conditions['first']} (separate condition)")
+    if css_conditions['other']:
+        logger.info(f"  - CSS other trials: {css_conditions['other']} (grouped as 'CSS_others')")
+    if csr_conditions['first']:
+        logger.info(f"  - CSR first trial: {csr_conditions['first']} (separate condition)")
+    if csr_conditions['other']:
+        logger.info(f"  - CSR other trials: {csr_conditions['other']} (grouped as 'CSR_others')")
     logger.info(f"  - Other trial types: {other_conditions}")
     
-    return contrasts, cs_first_trial, cs_other_trials, other_conditions
+    return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions
 
 
-def create_cs_separated_contrasts(condition_names, contrast_type='standard'):
+def create_cs_separated_contrasts(df_trial_info, contrast_type='standard'):
     """
-    Create contrasts with enhanced CS- condition grouping.
+    Create contrasts with enhanced CS-, CSS, and CSR condition grouping.
     
     This function creates contrasts where:
-    1. First trial of CS- conditions is handled as a separate condition (keeps original name)
-    2. All other CS- trials are kept as individual conditions (keeps original names)
+    1. First trial of each condition type (CS-, CSS, CSR) is handled as a separate condition
+    2. All other trials of each type are grouped together as single conditions
     3. All other trial types are handled as individual conditions
     
     Args:
-        condition_names (list): List of condition names
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+                                    The 'trial_type' column contains condition names,
+                                    and 'onset' column is used for chronological sorting.
         contrast_type (str): Type of contrasts to create
     
     Returns:
-        tuple: (contrasts_list, cs_first_trial, cs_other_trials, other_conditions, cs_regressor_info)
+        tuple: (contrasts_list, cs_conditions, css_conditions, csr_conditions, other_conditions, regressor_info)
             - contrasts_list: List of contrast tuples
-            - cs_first_trial: The first trial of CS- conditions found
-            - cs_other_trials: List of all other CS- trials (grouped)
-            - other_conditions: List of non-CS conditions
-            - cs_regressor_info: Dictionary with CS- regressor details
+            - cs_conditions: dict with 'first' and 'other' keys for CS- conditions
+            - css_conditions: dict with 'first' and 'other' keys for CSS conditions
+            - csr_conditions: dict with 'first' and 'other' keys for CSR conditions
+            - other_conditions: List of non-CS/CSS/CSR conditions
+            - regressor_info: Dictionary with regressor details for all condition types
     """
-    contrasts, cs_first_trial, cs_other_trials, other_conditions = create_contrasts(condition_names, contrast_type)
+    contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_contrasts(df_trial_info, contrast_type)
     
-    cs_regressor_info = None
-    if cs_first_trial or cs_other_trials:
-        cs_regressor_info = {
-            'first_trial': cs_first_trial,
-            'other_trials': cs_other_trials,  # Grouped into single 'CS-' condition
-            'regressor_type': 'enhanced_grouping',
-            'description': 'First trial CS- kept separate, other CS- trials grouped into single CS- condition',
-            'contrast_included': True,
-            'grouping_strategy': 'first_trial_separate_others_grouped',
-            'condition_names': {
-                'first_trial': cs_first_trial,  # Use original name
-                'other_trials': 'CS-_others',  # Grouped condition name
-                'other_types': other_conditions
-            }
+    regressor_info = {
+        'cs_conditions': cs_conditions,
+        'css_conditions': css_conditions,
+        'csr_conditions': csr_conditions,
+        'other_conditions': other_conditions,
+        'regressor_type': 'enhanced_grouping',
+        'description': 'First trials kept separate, other trials grouped by type',
+        'contrast_included': True,
+        'grouping_strategy': 'first_trial_separate_others_grouped_by_type',
+        'condition_names': {
+            'cs_first': cs_conditions['first'],
+            'cs_others': 'CS-_others' if cs_conditions['other'] else None,
+            'css_first': css_conditions['first'],
+            'css_others': 'CSS_others' if css_conditions['other'] else None,
+            'csr_first': csr_conditions['first'],
+            'csr_others': 'CSR_others' if csr_conditions['other'] else None,
+            'other_types': other_conditions
         }
-        logger.info(f"Enhanced CS- condition grouping configured:")
-        if cs_first_trial:
-            logger.info(f"  - First trial '{cs_first_trial}' kept as separate condition")
-        if cs_other_trials:
-            logger.info(f"  - Other CS- trials grouped into single 'CS-_others' condition: {cs_other_trials}")
+    }
     
-    return contrasts, cs_first_trial, cs_other_trials, other_conditions, cs_regressor_info
+    logger.info(f"Enhanced CS-/CSS/CSR condition grouping configured:")
+    if cs_conditions['first']:
+        logger.info(f"  - CS- first trial '{cs_conditions['first']}' kept as separate condition")
+    if cs_conditions['other']:
+        logger.info(f"  - CS- other trials grouped into 'CS-_others': {cs_conditions['other']}")
+    if css_conditions['first']:
+        logger.info(f"  - CSS first trial '{css_conditions['first']}' kept as separate condition")
+    if css_conditions['other']:
+        logger.info(f"  - CSS other trials grouped into 'CSS_others': {css_conditions['other']}")
+    if csr_conditions['first']:
+        logger.info(f"  - CSR first trial '{csr_conditions['first']}' kept as separate condition")
+    if csr_conditions['other']:
+        logger.info(f"  - CSR other trials grouped into 'CSR_others': {csr_conditions['other']}")
+    
+    return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions, regressor_info
 
 
-def create_custom_contrasts(condition_names, contrast_patterns):
+def create_custom_contrasts(df_trial_info, contrast_patterns):
     """
-    Create custom contrasts based on specific patterns with enhanced CS- grouping.
+    Create custom contrasts based on specific patterns with enhanced CS-, CSS, and CSR grouping.
     
-    This function also implements the enhanced CS- condition grouping strategy.
+    This function implements the enhanced condition grouping strategy for CS-, CSS, and CSR conditions.
     
     Args:
-        condition_names (list): List of condition names
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+                                    The 'trial_type' column contains condition names,
+                                    and 'onset' column is used for chronological sorting.
         contrast_patterns (list): List of contrast patterns or direct weight lists
     
     Returns:
-        tuple: (contrasts_list, cs_first_trial, cs_other_trials, other_conditions)
+        tuple: (contrasts_list, cs_conditions, css_conditions, csr_conditions, other_conditions)
             - contrasts_list: List of contrast tuples
-            - cs_first_trial: The first trial of CS- conditions found (or None)
-            - cs_other_trials: List of all other CS- trials (grouped)
-            - other_conditions: List of non-CS conditions
+            - cs_conditions: dict with 'first' and 'other' keys for CS- conditions
+            - css_conditions: dict with 'first' and 'other' keys for CSS conditions
+            - csr_conditions: dict with 'first' and 'other' keys for CSR conditions
+            - other_conditions: List of non-CS/CSS/CSR conditions
     """
-    if not condition_names:
-        logger.warning("No condition names provided for custom contrasts")
-        return [], None, [], []
+    if df_trial_info is None:
+        raise ValueError("df_trial_info is required")
     
-    # Extract CS- conditions with enhanced grouping
-    cs_first_trial, cs_other_trials, other_conditions = extract_cs_conditions(condition_names)
+    if not contrast_patterns:
+        raise ValueError("contrast_patterns is required")
+    
+    # Extract CS-, CSS, and CSR conditions with enhanced grouping
+    df_with_conditions, cs_conditions, css_conditions, csr_conditions, other_conditions = extract_cs_conditions(df_trial_info)
     
     # Create list of all conditions for contrast generation
     all_contrast_conditions = []
-    if cs_first_trial:
-        all_contrast_conditions.append(cs_first_trial)  # CS-_first as separate condition
-    if cs_other_trials:
-        # Group all other CS- trials into single 'CS-_others' condition
-        all_contrast_conditions.append('CS-_others')  # Single grouped condition for all other CS- trials
+    
+    # Add first trials as separate conditions
+    if cs_conditions['first']:
+        all_contrast_conditions.append(cs_conditions['first'])
+    if css_conditions['first']:
+        all_contrast_conditions.append(css_conditions['first'])
+    if csr_conditions['first']:
+        all_contrast_conditions.append(csr_conditions['first'])
+    
+    # Add grouped other trials as single conditions
+    if cs_conditions['other']:
+        all_contrast_conditions.append('CS-_others')
+    if css_conditions['other']:
+        all_contrast_conditions.append('CSS_others')
+    if csr_conditions['other']:
+        all_contrast_conditions.append('CSR_others')
+    
+    # Add all other conditions
     all_contrast_conditions.extend(other_conditions)
     
     contrasts = []
@@ -282,20 +374,28 @@ def create_custom_contrasts(condition_names, contrast_patterns):
                 weights = [(i - (n_conds-1)/2) for i in range(n_conds)]
                 contrasts.append(('linear_trend', 'T', all_contrast_conditions, weights))
     
-    logger.info(f"Generated {len(contrasts)} custom contrasts with enhanced CS- grouping:")
-    if cs_first_trial:
-        logger.info(f"  - First CS- trial: {cs_first_trial} (kept as separate condition)")
-    if cs_other_trials:
-        logger.info(f"  - Other CS- trials: {cs_other_trials} (grouped into single 'CS-_others' condition)")
+    logger.info(f"Generated {len(contrasts)} custom contrasts with enhanced CS-/CSS/CSR grouping:")
+    if cs_conditions['first']:
+        logger.info(f"  - CS- first trial: {cs_conditions['first']} (separate condition)")
+    if cs_conditions['other']:
+        logger.info(f"  - CS- other trials: {cs_conditions['other']} (grouped as 'CS-_others')")
+    if css_conditions['first']:
+        logger.info(f"  - CSS first trial: {css_conditions['first']} (separate condition)")
+    if css_conditions['other']:
+        logger.info(f"  - CSS other trials: {css_conditions['other']} (grouped as 'CSS_others')")
+    if csr_conditions['first']:
+        logger.info(f"  - CSR first trial: {csr_conditions['first']} (separate condition)")
+    if csr_conditions['other']:
+        logger.info(f"  - CSR other trials: {csr_conditions['other']} (grouped as 'CSR_others')")
     logger.info(f"  - Other trial types: {other_conditions}")
     
-    return contrasts, cs_first_trial, cs_other_trials, other_conditions
+    return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions
 
 # =============================================================================
 # CORE WORKFLOW FUNCTIONS
 # =============================================================================
 
-def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None, 
+def first_level_wf(in_files, output_dir, df_trial_info, contrasts=None, 
                    contrast_type='standard', contrast_patterns=None,
                    fwhm=6.0, brightness_threshold=1000, high_pass_cutoff=100,
                    use_smoothing=True, use_derivatives=True, model_serial_correlations=True):
@@ -305,7 +405,9 @@ def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None,
     Args:
         in_files (dict): Input files dictionary
         output_dir (str): Output directory path
-        condition_names (list): List of condition names (auto-detected if None)
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+                                    The 'trial_type' column contains condition names,
+                                    and 'onset' column is used for chronological sorting.
         contrasts (list): List of contrast tuples (auto-generated if None)
         contrast_type (str): Type of contrasts to auto-generate ('standard', 'minimal', 'custom')
         contrast_patterns (list): List of contrast patterns for custom generation
@@ -369,9 +471,9 @@ def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None,
             condition_names = ['condition1', 'condition2', 'condition3']
         
         if contrast_type == 'custom' and contrast_patterns:
-            contrasts, cs_first_trial, cs_other_trials, other_conditions = create_custom_contrasts(condition_names, contrast_patterns)
+            contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_custom_contrasts(df_trial_info, contrast_patterns)
         else:
-            contrasts, cs_first_trial, cs_other_trials, other_conditions = create_contrasts(condition_names, contrast_type=contrast_type)
+            contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_contrasts(df_trial_info, contrast_type=contrast_type)
     
     if not contrasts:
         logger.warning("No contrasts generated, workflow may fail")
@@ -431,7 +533,7 @@ def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None,
     workflow.connect(connections)
     return workflow
 
-def first_level_wf_LSS(in_files, output_dir, trial_ID, condition_names=None, contrasts=None,
+def first_level_wf_LSS(in_files, output_dir, trial_ID, df_trial_info, contrasts=None,
                        contrast_type='minimal', contrast_patterns=None,
                        fwhm=6.0, brightness_threshold=1000, high_pass_cutoff=100,
                        use_smoothing=False, use_derivatives=True, model_serial_correlations=True):
@@ -506,9 +608,9 @@ def first_level_wf_LSS(in_files, output_dir, trial_ID, condition_names=None, con
             condition_names = ['trial', 'others']
         
         if contrast_type == 'custom' and contrast_patterns:
-            contrasts, cs_condition, other_conditions = create_custom_contrasts(condition_names, contrast_patterns)
+            contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_custom_contrasts(df_trial_info, contrast_patterns)
         else:
-            contrasts, cs_condition, other_conditions = create_contrasts(condition_names, contrast_type=contrast_type)
+            contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_contrasts(df_trial_info, contrast_type=contrast_type)
     
     if not contrasts:
         logger.warning("No contrasts generated for LSS workflow")
@@ -582,7 +684,7 @@ def first_level_wf_LSS(in_files, output_dir, trial_ID, condition_names=None, con
     workflow.connect(connections)
     return workflow
 
-def first_level_wf_voxelwise(inputs, output_dir, condition_names=None, contrasts=None, 
+def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None, 
                             contrast_type='standard', contrast_patterns=None, fwhm=6.0, 
                             brightness_threshold=0.1, high_pass_cutoff=128, use_smoothing=True, 
                             use_derivatives=True, model_serial_correlations=True):
@@ -659,19 +761,25 @@ def first_level_wf_voxelwise(inputs, output_dir, condition_names=None, contrasts
             condition_names = ['condition1', 'condition2', 'condition3']
         
         if contrast_type == 'custom' and contrast_patterns:
-            contrasts, cs_first_trial, cs_other_trials, other_conditions = create_custom_contrasts(condition_names, contrast_patterns)
+            contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_custom_contrasts(df_trial_info, contrast_patterns)
         else:
-            contrasts, cs_first_trial, cs_other_trials, other_conditions = create_contrasts(condition_names, contrast_type=contrast_type)
+            contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_contrasts(df_trial_info, contrast_type=contrast_type)
     
     if not contrasts:
         logger.warning("No contrasts generated, workflow may fail")
     
-    # Log first trial of CS- condition handling
-    if cs_first_trial:
-        logger.info(f"First trial of CS- condition '{cs_first_trial}' will be handled as separate regressor")
+    # Log first trial of CS-, CSS, and CSR condition handling
+    if cs_conditions['first'] or css_conditions['first'] or csr_conditions['first']:
+        logger.info(f"First trials will be handled as separate regressors:")
+        if cs_conditions['first']:
+            logger.info(f"  - CS- first trial: '{cs_conditions['first']}'")
+        if css_conditions['first']:
+            logger.info(f"  - CSS first trial: '{css_conditions['first']}'")
+        if csr_conditions['first']:
+            logger.info(f"  - CSR first trial: '{csr_conditions['first']}'")
         logger.info(f"Main contrasts: {[c[0] for c in contrasts]}")
     else:
-        logger.info(f"No first trial of CS- condition found. Using {len(contrasts)} contrasts: {[c[0] for c in contrasts]}")
+        logger.info(f"No first trials found. Using {len(contrasts)} contrasts: {[c[0] for c in contrasts]}")
 
     # Level 1 model design
     l1_model = pe.Node(Level1Design(
@@ -798,39 +906,48 @@ def _build_workflow_connections(datasource, apply_mask, runinfo, l1_spec, l1_mod
     
     return connections
 
-def create_voxelwise_design_matrix(condition_names, cs_first_trial=None):
+def create_voxelwise_design_matrix(df_trial_info):
     """
-    Create a design matrix specifically for voxel-wise analysis with enhanced CS- condition grouping.
+    Create a design matrix specifically for voxel-wise analysis with enhanced CS-, CSS, and CSR condition grouping.
     
     This function creates a design matrix where:
-    1. First trial of CS- conditions is handled as a separate condition
-    2. All other CS- trials are grouped together as one condition
+    1. First trial of each condition type (CS-, CSS, CSR) is handled as a separate condition
+    2. All other trials of each type are grouped together as single conditions
     3. All other trial types are handled as individual conditions
     
     Args:
-        condition_names (list): List of all condition names
-        cs_first_trial (str): The first trial of CS- conditions to handle separately (if None, auto-detect)
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+                                    The 'trial_type' column contains condition names,
+                                    and 'onset' column is used for chronological sorting.
     
     Returns:
-        dict: Design matrix configuration with enhanced CS- condition grouping
+        dict: Design matrix configuration with enhanced condition grouping
     """
-    if cs_first_trial is None:
-        cs_first_trial, cs_other_trials, other_conditions = extract_cs_conditions(condition_names)
+    df_with_conditions, cs_conditions, css_conditions, csr_conditions, other_conditions = extract_cs_conditions(df_trial_info)
     
     design_config = {
-        'main_conditions': [c for c in condition_names if c != cs_first_trial],
-        'cs_first_trial': cs_first_trial,
-        'cs_other_trials_grouped': cs_other_trials if 'cs_other_trials' in locals() else [],
-        'cs_as_regressor': cs_first_trial is not None,
+        'main_conditions': other_conditions,
+        'cs_conditions': cs_conditions,
+        'css_conditions': css_conditions,
+        'csr_conditions': csr_conditions,
         'enhanced_grouping': True,
-        'description': 'Voxel-wise analysis with enhanced CS- condition grouping: first trial separate, others grouped'
+        'description': 'Voxel-wise analysis with enhanced CS-/CSS/CSR condition grouping: first trials separate, others grouped by type'
     }
     
-    if cs_first_trial:
-        logger.info(f"First trial of CS- condition '{cs_first_trial}' configured as separate condition")
-        if 'cs_other_trials' in locals() and cs_other_trials:
-            logger.info(f"Other CS- trials grouped as 'CS-_other_trials': {cs_other_trials}")
-        logger.info(f"Main conditions for contrasts: {design_config['main_conditions']}")
+    logger.info(f"Design matrix configuration:")
+    if cs_conditions['first']:
+        logger.info(f"  - CS- first trial '{cs_conditions['first']}' as separate condition")
+    if cs_conditions['other']:
+        logger.info(f"  - CS- other trials grouped as 'CS-_others': {cs_conditions['other']}")
+    if css_conditions['first']:
+        logger.info(f"  - CSS first trial '{css_conditions['first']}' as separate condition")
+    if css_conditions['other']:
+        logger.info(f"  - CSS other trials grouped as 'CSS_others': {css_conditions['other']}")
+    if csr_conditions['first']:
+        logger.info(f"  - CSR first trial '{csr_conditions['first']}' as separate condition")
+    if csr_conditions['other']:
+        logger.info(f"  - CSR other trials grouped as 'CSR_others': {csr_conditions['other']}")
+    logger.info(f"  - Other conditions: {other_conditions}")
     
     return design_config
 
@@ -913,11 +1030,12 @@ def example_usage():
     # Sample condition names (first trial of CS- condition will be auto-detected)
     condition_names = ['CS-US_trial1', 'CS-US_trial2', 'CS-US_trial3', 'US', 'CS+', 'baseline']
     
-    # Create contrasts with enhanced CS- grouping
-    contrasts, cs_first_trial, cs_other_trials, other_conditions = create_contrasts(condition_names, 'standard')
+    # Create contrasts with enhanced CS-, CSS, and CSR grouping
+    contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_contrasts(condition_names, 'standard')
     
-    print(f"First trial of CS- condition detected: {cs_first_trial}")
-    print(f"Other CS- trials grouped into single 'CS-_others' condition: {cs_other_trials}")
+    print(f"CS- conditions: first='{cs_conditions['first']}', other={cs_conditions['other']}")
+    print(f"CSS conditions: first='{css_conditions['first']}', other={css_conditions['other']}")
+    print(f"CSR conditions: first='{csr_conditions['first']}', other={csr_conditions['other']}")
     print(f"Other trial types: {other_conditions}")
     print(f"Generated contrasts: {[c[0] for c in contrasts]}")
     

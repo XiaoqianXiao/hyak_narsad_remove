@@ -239,15 +239,15 @@ def load_behavioral_data(filter_column=None, filter_value=None, include_columns=
                 logger.warning(f"Drug column not found, cannot filter by data source '{data_source}'")
         
         # EXCLUDE Trans subjects (gender_code == 2) from all analyses to prevent matrix singularity
-        if 'gender_code' in df_behav.columns:
-            before_count = len(df_behav)
-            df_behav = df_behav[df_behav['gender_code'] != 2].copy()
-            after_count = len(df_behav)
-            if before_count != after_count:
-                logger.info(f"EXCLUDED {before_count - after_count} Trans subjects (gender_code=2) from analysis to prevent matrix singularity")
-                logger.info(f"Subjects remaining: {after_count}")
-        else:
-            logger.warning("No gender_code column found - cannot exclude Trans subjects")
+        # if 'gender_code' in df_behav.columns:
+        #     before_count = len(df_behav)
+        #     df_behav = df_behav[df_behav['gender_code'] != 2].copy()
+        #     after_count = len(df_behav)
+        #     if before_count != after_count:
+        #         logger.info(f"EXCLUDED {before_count - after_count} Trans subjects (gender_code=2) from analysis to prevent matrix singularity")
+        #         logger.info(f"Subjects remaining: {after_count}")
+        # else:
+        #     logger.warning("No gender_code column found - cannot exclude Trans subjects")
         
         # Apply additional filtering if specified
         if filter_column and filter_value:
@@ -288,7 +288,7 @@ def load_behavioral_data(filter_column=None, filter_value=None, include_columns=
         if include_columns:
             # Smart column name mapping for common variations
             column_mapping = {
-                'gender_id': 'gender_code',  # Map gender_id to gender_code for initial data access
+                'gender_id': 'demo_sex_at_birth',  # Map gender_id to demo_sex_at_birth for initial data access
                 'drug_id': 'drug_id',        # Keep drug_id as is
                 'group_id': 'group_id',      # Keep group_id as is
                 'subID': 'subID'             # Keep subID as is
@@ -310,7 +310,7 @@ def load_behavioral_data(filter_column=None, filter_value=None, include_columns=
             if missing_columns:
                 raise ValueError(f"Requested columns not found: {missing_columns}. "
                                f"Available columns: {list(df_behav.columns)}. "
-                               f"Note: gender_id maps to gender_code for initial data access")
+                               f"Note: gender_id maps to demo_sex_at_birth for initial data access")
             
             # Use mapped columns for data processing, but keep original names for output
             data_columns = mapped_columns
@@ -568,7 +568,8 @@ def main():
     """Main execution function."""
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Pre-group level fMRI analysis pipeline for NARSAD project. Creates merged COPE/VARCOPE files and design matrices for group-level analysis. Supports 2x2 and 2x2x2 factorial designs. Trans subjects (gender_code=3) are automatically excluded to prevent matrix singularity.",
+        #description="Pre-group level fMRI analysis pipeline for NARSAD project. Creates merged COPE/VARCOPE files and design matrices for group-level analysis. Supports 2x2 and 2x2x2 factorial designs. Trans subjects (gender_code=3) are automatically excluded to prevent matrix singularity.",
+        description="Pre-group level fMRI analysis pipeline for NARSAD project. Creates merged COPE/VARCOPE files and design matrices for group-level analysis. Supports 2x2 and 2x2x2 factorial designs.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -627,8 +628,8 @@ Examples:
         type=str,
         help='Comma-separated list of columns to include in group_info (default: auto-detect). '
              'Available columns: subID, group_id, drug_id, gender_id, guess_id. '
-             'Note: gender_id maps to gender_code column in data. '
-             'Trans subjects (gender_code=3) are automatically excluded to prevent matrix singularity.'
+             'Note: gender_id maps to demo_sex_at_birth column in data. '
+             #'Trans subjects (gender_code=3) are automatically excluded to prevent matrix singularity.'
     )
     
     parser.add_argument(
@@ -795,7 +796,7 @@ Examples:
             if args.include_columns:
                 # If include_columns was specified, we need to map back to the actual column names in the data
                 column_mapping = {
-                    'gender_id': 'gender_code',  # Map gender_id to gender_code for initial data access
+                    'gender_id': 'demo_sex_at_birth',  # Map gender_id to demo_sex_at_birth for initial data access
                     'drug_id': 'drug_id',        # Keep drug_id as is
                     'group_id': 'group_id',      # Keep group_id as is
                     'subID': 'subID'             # Keep subID as is
@@ -818,13 +819,13 @@ Examples:
                 # GENDER LEVEL RECODING: Recode gender levels from (0,1) to (1,2) for 2×2 factorial design
                 # This prevents the 6-column design matrix issue (2 groups × 3 genders = 6 columns)
                 logger.info("Recoding gender levels from (0,1) to (1,2) for 2×2 factorial design")
-                task_group_info_df['gender_id'] = task_group_info_df['gender_code'].map({0: 1, 1: 2})
+                task_group_info_df['gender_id'] = task_group_info_df['demo_sex_at_birth'].map({0: 1, 1: 2})
                 logger.info("Gender level recoding complete: 0→1 (Female), 1→2 (Male)")
                 
-                # Update processing_columns to use gender_id instead of gender_code for the final group_info
+                # Update processing_columns to use gender_id instead of demo_sex_at_birth for the final group_info
                 # This ensures we use the recoded values (1,2) instead of the original (0,1)
-                if 'gender_code' in processing_columns:
-                    processing_columns = [col if col != 'gender_code' else 'gender_id' for col in processing_columns]
+                if 'demo_sex_at_birth' in processing_columns:
+                    processing_columns = [col if col != 'demo_sex_at_birth' else 'gender_id' for col in processing_columns]
                     logger.info(f"Updated processing_columns to use recoded gender_id: {processing_columns}")
             
             group_info = list(task_group_info_df[processing_columns].itertuples(index=False, name=None))

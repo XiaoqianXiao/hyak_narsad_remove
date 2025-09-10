@@ -1,0 +1,365 @@
+# Contrast File Generated for NARSAD Data
+# Format: (contrast_name, contrast_type, conditions, weights)
+# Total contrasts: 72
+# Generated using conditions column approach
+
+ 1. FIXATION>CS-_first
+    Type: T
+    Conditions: ['FIXATION', 'CS-_first']
+    Weights: [1, -1]
+
+ 2. FIXATION<CS-_first
+    Type: T
+    Conditions: ['FIXATION', 'CS-_first']
+    Weights: [-1, 1]
+
+ 3. FIXATION>CSS_first
+    Type: T
+    Conditions: ['FIXATION', 'CSS_first']
+    Weights: [1, -1]
+
+ 4. FIXATION<CSS_first
+    Type: T
+    Conditions: ['FIXATION', 'CSS_first']
+    Weights: [-1, 1]
+
+ 5. FIXATION>US_CSS
+    Type: T
+    Conditions: ['FIXATION', 'US_CSS']
+    Weights: [1, -1]
+
+ 6. FIXATION<US_CSS
+    Type: T
+    Conditions: ['FIXATION', 'US_CSS']
+    Weights: [-1, 1]
+
+ 7. FIXATION>CSR_first
+    Type: T
+    Conditions: ['FIXATION', 'CSR_first']
+    Weights: [1, -1]
+
+ 8. FIXATION<CSR_first
+    Type: T
+    Conditions: ['FIXATION', 'CSR_first']
+    Weights: [-1, 1]
+
+ 9. FIXATION>US_CSR
+    Type: T
+    Conditions: ['FIXATION', 'US_CSR']
+    Weights: [1, -1]
+
+10. FIXATION<US_CSR
+    Type: T
+    Conditions: ['FIXATION', 'US_CSR']
+    Weights: [-1, 1]
+
+11. FIXATION>CSR_others
+    Type: T
+    Conditions: ['FIXATION', 'CSR_others']
+    Weights: [1, -1]
+
+12. FIXATION<CSR_others
+    Type: T
+    Conditions: ['FIXATION', 'CSR_others']
+    Weights: [-1, 1]
+
+13. FIXATION>CSS_others
+    Type: T
+    Conditions: ['FIXATION', 'CSS_others']
+    Weights: [1, -1]
+
+14. FIXATION<CSS_others
+    Type: T
+    Conditions: ['FIXATION', 'CSS_others']
+    Weights: [-1, 1]
+
+15. FIXATION>CS-_others
+    Type: T
+    Conditions: ['FIXATION', 'CS-_others']
+    Weights: [1, -1]
+
+16. FIXATION<CS-_others
+    Type: T
+    Conditions: ['FIXATION', 'CS-_others']
+    Weights: [-1, 1]
+
+17. CS-_first>CSS_first
+    Type: T
+    Conditions: ['CS-_first', 'CSS_first']
+    Weights: [1, -1]
+
+18. CS-_first<CSS_first
+    Type: T
+    Conditions: ['CS-_first', 'CSS_first']
+    Weights: [-1, 1]
+
+19. CS-_first>US_CSS
+    Type: T
+    Conditions: ['CS-_first', 'US_CSS']
+    Weights: [1, -1]
+
+20. CS-_first<US_CSS
+    Type: T
+    Conditions: ['CS-_first', 'US_CSS']
+    Weights: [-1, 1]
+
+21. CS-_first>CSR_first
+    Type: T
+    Conditions: ['CS-_first', 'CSR_first']
+    Weights: [1, -1]
+
+22. CS-_first<CSR_first
+    Type: T
+    Conditions: ['CS-_first', 'CSR_first']
+    Weights: [-1, 1]
+
+23. CS-_first>US_CSR
+    Type: T
+    Conditions: ['CS-_first', 'US_CSR']
+    Weights: [1, -1]
+
+24. CS-_first<US_CSR
+    Type: T
+    Conditions: ['CS-_first', 'US_CSR']
+    Weights: [-1, 1]
+
+25. CS-_first>CSR_others
+    Type: T
+    Conditions: ['CS-_first', 'CSR_others']
+    Weights: [1, -1]
+
+26. CS-_first<CSR_others
+    Type: T
+    Conditions: ['CS-_first', 'CSR_others']
+    Weights: [-1, 1]
+
+27. CS-_first>CSS_others
+    Type: T
+    Conditions: ['CS-_first', 'CSS_others']
+    Weights: [1, -1]
+
+28. CS-_first<CSS_others
+    Type: T
+    Conditions: ['CS-_first', 'CSS_others']
+    Weights: [-1, 1]
+
+29. CS-_first>CS-_others
+    Type: T
+    Conditions: ['CS-_first', 'CS-_others']
+    Weights: [1, -1]
+
+30. CS-_first<CS-_others
+    Type: T
+    Conditions: ['CS-_first', 'CS-_others']
+    Weights: [-1, 1]
+
+31. CSS_first>US_CSS
+    Type: T
+    Conditions: ['CSS_first', 'US_CSS']
+    Weights: [1, -1]
+
+32. CSS_first<US_CSS
+    Type: T
+    Conditions: ['CSS_first', 'US_CSS']
+    Weights: [-1, 1]
+
+33. CSS_first>CSR_first
+    Type: T
+    Conditions: ['CSS_first', 'CSR_first']
+    Weights: [1, -1]
+
+34. CSS_first<CSR_first
+    Type: T
+    Conditions: ['CSS_first', 'CSR_first']
+    Weights: [-1, 1]
+
+35. CSS_first>US_CSR
+    Type: T
+    Conditions: ['CSS_first', 'US_CSR']
+    Weights: [1, -1]
+
+36. CSS_first<US_CSR
+    Type: T
+    Conditions: ['CSS_first', 'US_CSR']
+    Weights: [-1, 1]
+
+37. CSS_first>CSR_others
+    Type: T
+    Conditions: ['CSS_first', 'CSR_others']
+    Weights: [1, -1]
+
+38. CSS_first<CSR_others
+    Type: T
+    Conditions: ['CSS_first', 'CSR_others']
+    Weights: [-1, 1]
+
+39. CSS_first>CSS_others
+    Type: T
+    Conditions: ['CSS_first', 'CSS_others']
+    Weights: [1, -1]
+
+40. CSS_first<CSS_others
+    Type: T
+    Conditions: ['CSS_first', 'CSS_others']
+    Weights: [-1, 1]
+
+41. CSS_first>CS-_others
+    Type: T
+    Conditions: ['CSS_first', 'CS-_others']
+    Weights: [1, -1]
+
+42. CSS_first<CS-_others
+    Type: T
+    Conditions: ['CSS_first', 'CS-_others']
+    Weights: [-1, 1]
+
+43. US_CSS>CSR_first
+    Type: T
+    Conditions: ['US_CSS', 'CSR_first']
+    Weights: [1, -1]
+
+44. US_CSS<CSR_first
+    Type: T
+    Conditions: ['US_CSS', 'CSR_first']
+    Weights: [-1, 1]
+
+45. US_CSS>US_CSR
+    Type: T
+    Conditions: ['US_CSS', 'US_CSR']
+    Weights: [1, -1]
+
+46. US_CSS<US_CSR
+    Type: T
+    Conditions: ['US_CSS', 'US_CSR']
+    Weights: [-1, 1]
+
+47. US_CSS>CSR_others
+    Type: T
+    Conditions: ['US_CSS', 'CSR_others']
+    Weights: [1, -1]
+
+48. US_CSS<CSR_others
+    Type: T
+    Conditions: ['US_CSS', 'CSR_others']
+    Weights: [-1, 1]
+
+49. US_CSS>CSS_others
+    Type: T
+    Conditions: ['US_CSS', 'CSS_others']
+    Weights: [1, -1]
+
+50. US_CSS<CSS_others
+    Type: T
+    Conditions: ['US_CSS', 'CSS_others']
+    Weights: [-1, 1]
+
+51. US_CSS>CS-_others
+    Type: T
+    Conditions: ['US_CSS', 'CS-_others']
+    Weights: [1, -1]
+
+52. US_CSS<CS-_others
+    Type: T
+    Conditions: ['US_CSS', 'CS-_others']
+    Weights: [-1, 1]
+
+53. CSR_first>US_CSR
+    Type: T
+    Conditions: ['CSR_first', 'US_CSR']
+    Weights: [1, -1]
+
+54. CSR_first<US_CSR
+    Type: T
+    Conditions: ['CSR_first', 'US_CSR']
+    Weights: [-1, 1]
+
+55. CSR_first>CSR_others
+    Type: T
+    Conditions: ['CSR_first', 'CSR_others']
+    Weights: [1, -1]
+
+56. CSR_first<CSR_others
+    Type: T
+    Conditions: ['CSR_first', 'CSR_others']
+    Weights: [-1, 1]
+
+57. CSR_first>CSS_others
+    Type: T
+    Conditions: ['CSR_first', 'CSS_others']
+    Weights: [1, -1]
+
+58. CSR_first<CSS_others
+    Type: T
+    Conditions: ['CSR_first', 'CSS_others']
+    Weights: [-1, 1]
+
+59. CSR_first>CS-_others
+    Type: T
+    Conditions: ['CSR_first', 'CS-_others']
+    Weights: [1, -1]
+
+60. CSR_first<CS-_others
+    Type: T
+    Conditions: ['CSR_first', 'CS-_others']
+    Weights: [-1, 1]
+
+61. US_CSR>CSR_others
+    Type: T
+    Conditions: ['US_CSR', 'CSR_others']
+    Weights: [1, -1]
+
+62. US_CSR<CSR_others
+    Type: T
+    Conditions: ['US_CSR', 'CSR_others']
+    Weights: [-1, 1]
+
+63. US_CSR>CSS_others
+    Type: T
+    Conditions: ['US_CSR', 'CSS_others']
+    Weights: [1, -1]
+
+64. US_CSR<CSS_others
+    Type: T
+    Conditions: ['US_CSR', 'CSS_others']
+    Weights: [-1, 1]
+
+65. US_CSR>CS-_others
+    Type: T
+    Conditions: ['US_CSR', 'CS-_others']
+    Weights: [1, -1]
+
+66. US_CSR<CS-_others
+    Type: T
+    Conditions: ['US_CSR', 'CS-_others']
+    Weights: [-1, 1]
+
+67. CSR_others>CSS_others
+    Type: T
+    Conditions: ['CSR_others', 'CSS_others']
+    Weights: [1, -1]
+
+68. CSR_others<CSS_others
+    Type: T
+    Conditions: ['CSR_others', 'CSS_others']
+    Weights: [-1, 1]
+
+69. CSR_others>CS-_others
+    Type: T
+    Conditions: ['CSR_others', 'CS-_others']
+    Weights: [1, -1]
+
+70. CSR_others<CS-_others
+    Type: T
+    Conditions: ['CSR_others', 'CS-_others']
+    Weights: [-1, 1]
+
+71. CSS_others>CS-_others
+    Type: T
+    Conditions: ['CSS_others', 'CS-_others']
+    Weights: [1, -1]
+
+72. CSS_others<CS-_others
+    Type: T
+    Conditions: ['CSS_others', 'CS-_others']
+    Weights: [-1, 1]
+

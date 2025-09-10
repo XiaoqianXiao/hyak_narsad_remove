@@ -132,97 +132,74 @@ def build_query(participant_label=None, run=None, task=None):
 # UTILITY FUNCTIONS
 # =============================================================================
 
-def get_condition_names_from_events(events_file):
+def get_df_trial_info(events_file):
     """
-    Extract condition names from events file with proper CS- splitting.
+    Load events file and return df_trial_info DataFrame.
     
-    This function now uses the same logic as utils.py to create 7 conditions
-    by splitting multiple CS- trials into CS-_first and CS-_others.
+    This function loads the events CSV file and returns it as df_trial_info
+    for use with the workflow functions. The DataFrame should contain
+    'trial_type', 'onset', and 'duration' columns.
     
     Args:
         events_file (str): Path to events CSV file
     
     Returns:
-        list: List of condition names with proper CS- splitting
+        pandas.DataFrame: df_trial_info with columns 'trial_type', 'onset', 'duration'
     """
     try:
         if os.path.exists(events_file):
             # Use utility function for automatic separator detection
             from utils import read_csv_with_detection
-            events_df = read_csv_with_detection(events_file)
+            df_trial_info = read_csv_with_detection(events_file)
             
-            if 'trial_type' in events_df.columns:
-                # Get raw conditions and apply CS- splitting logic
-                raw_conditions = list(events_df['trial_type'].values)
+            # Validate required columns
+            required_columns = ['trial_type', 'onset', 'duration']
+            missing_columns = [col for col in required_columns if col not in df_trial_info.columns]
+            
+            if missing_columns:
+                # Try alternative column names
+                column_mapping = {
+                    'trial_type': ['condition', 'event_type', 'type', 'stimulus', 'trial'],
+                    'onset': ['start_time', 'time', 'timestamp'],
+                    'duration': ['length', 'dur', 'duration_ms']
+                }
                 
-                # Count CS- trials and create proper condition names
-                cs_count = raw_conditions.count('CS-')
-                if cs_count > 1:
-                    # Multiple CS- trials: split into CS-_first and CS-_others
-                    condition_names = ['CS-_first', 'CS-_others']
-                    # Add other unique conditions (excluding ONLY the exact 'CS-' condition)
-                    other_conditions = [c for c in set(raw_conditions) if c != 'CS-']
-                    condition_names.extend(other_conditions)
-                    logger.info(f"Split {cs_count} CS- trials into CS-_first and CS-_others. Total conditions: {len(condition_names)}")
-                    logger.info(f"Raw conditions: {raw_conditions}")
-                    logger.info(f"Unique conditions: {list(set(raw_conditions))}")
-                    logger.info(f"Other conditions found: {other_conditions}")
-                    logger.info(f"Final condition names: {condition_names}")
-                else:
-                    # Single or no CS- trials: use original logic
-                    condition_names = sorted(events_df['trial_type'].unique().tolist())
-                    logger.info(f"Using standard conditions: {len(condition_names)} total")
+                for required_col in missing_columns:
+                    if required_col in column_mapping:
+                        for alt_col in column_mapping[required_col]:
+                            if alt_col in df_trial_info.columns:
+                                df_trial_info[required_col] = df_trial_info[alt_col]
+                                logger.info(f"Mapped column '{alt_col}' to '{required_col}'")
+                                break
                 
-                logger.info(f"Final condition names: {condition_names}")
-                return condition_names
-            else:
-                # If 'trial_type' not found, try alternative column names
-                possible_columns = ['condition', 'event_type', 'type', 'stimulus', 'trial']
-                for col in possible_columns:
-                    if col in events_df.columns:
-                        # Apply same CS- splitting logic to alternative columns
-                        raw_conditions = list(events_df[col].values)
-                        cs_count = raw_conditions.count('CS-')
-                        if cs_count > 1:
-                            condition_names = ['CS-_first', 'CS-_others']
-                            other_conditions = [c for c in set(raw_conditions) if c != 'CS-']
-                            condition_names.extend(other_conditions)
-                            logger.info(f"Split {cs_count} CS- trials into CS-_first and CS-_others using column '{col}'. Total conditions: {len(condition_names)}")
-                        else:
-                            condition_names = sorted(events_df[col].unique().tolist())
-                            logger.info(f"Using standard conditions from column '{col}': {len(condition_names)} total")
-                        return condition_names
-                
-                # If no suitable column found, show available columns
-                available_columns = list(events_df.columns)
-                logger.warning(f"No 'trial_type' or alternative column found in events file: {events_file}")
-                logger.warning(f"Available columns: {available_columns}")
-                
-                # If there are only a few columns, try to use the first non-numeric column
-                for col in available_columns:
-                    if not pd.api.types.is_numeric_dtype(events_df[col]):
-                        # Apply same CS- splitting logic
-                        raw_conditions = list(events_df[col].values)
-                        cs_count = raw_conditions.count('CS-')
-                        if cs_count > 1:
-                            condition_names = ['CS-_first', 'CS-_others']
-                            other_conditions = [c for c in set(raw_conditions) if c != 'CS-']
-                            condition_names.extend(other_conditions)
-                            logger.info(f"Split {cs_count} CS- trials into CS-_first and CS-_others using first non-numeric column '{col}'. Total conditions: {len(condition_names)}")
-                        else:
-                            condition_names = sorted(events_df[col].unique().tolist())
-                            logger.info(f"Using first non-numeric column '{col}' as condition names: {condition_names}")
-                        return condition_names
-                
-                logger.warning("No suitable column found for condition names")
+                # Check if we still have missing columns
+                missing_columns = [col for col in required_columns if col not in df_trial_info.columns]
+                if missing_columns:
+                    logger.error(f"Missing required columns: {missing_columns}")
+                    logger.error(f"Available columns: {list(df_trial_info.columns)}")
+                    raise ValueError(f"Events file missing required columns: {missing_columns}")
+            
+            # Ensure data types are correct
+            df_trial_info['onset'] = pd.to_numeric(df_trial_info['onset'], errors='coerce')
+            df_trial_info['duration'] = pd.to_numeric(df_trial_info['duration'], errors='coerce')
+            
+            # Remove any rows with NaN values in required columns
+            df_trial_info = df_trial_info.dropna(subset=required_columns)
+            
+            logger.info(f"Successfully loaded df_trial_info: {df_trial_info.shape}")
+            logger.info(f"Columns: {list(df_trial_info.columns)}")
+            logger.info(f"Trial types: {sorted(df_trial_info['trial_type'].unique())}")
+            logger.info(f"Time range: {df_trial_info['onset'].min():.1f} - {df_trial_info['onset'].max():.1f} seconds")
+            
+            return df_trial_info
+            
         else:
-            logger.warning(f"Events file does not exist: {events_file}")
+            logger.error(f"Events file does not exist: {events_file}")
+            raise FileNotFoundError(f"Events file not found: {events_file}")
+            
     except Exception as e:
-        logger.error(f"Could not read events file {events_file}: {e}")
-    
-    # Return empty list if events file cannot be read
-    logger.warning("Returning empty condition names list")
-    return []
+        logger.error(f"Could not load df_trial_info from events file {events_file}: {e}")
+        raise
 
 def create_workflow_config():
     """
@@ -384,19 +361,20 @@ def run_subject_workflow(sub, inputs, work_dir, output_dir, task):
         # Get workflow configuration
         config = create_workflow_config()
         
-        # Get condition names from events file
+        # Get df_trial_info from events file
         events_file = inputs[sub]['events']
-        condition_names = get_condition_names_from_events(events_file)
+        df_trial_info = get_df_trial_info(events_file)
         
         logger.info(f"Processing subject {sub}, task {task}")
-        logger.info(f"Condition names: {condition_names}")
+        logger.info(f"df_trial_info shape: {df_trial_info.shape}")
+        logger.info(f"Trial types: {sorted(df_trial_info['trial_type'].unique())}")
         logger.info(f"Workflow config: {config}")
         
         # Create the workflow
         workflow = first_level_wf(
             in_files=inputs,
             output_dir=output_dir,
-            condition_names=condition_names,
+            df_trial_info=df_trial_info,  # Pass df_trial_info instead of condition_names
             contrast_type=config['contrast_type'],
             fwhm=config['fwhm'],
             brightness_threshold=config['brightness_threshold'],
