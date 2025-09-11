@@ -111,7 +111,7 @@ get_available_copes() {
 # =============================================================================
 
 # Single container for all data sources
-CONTAINER_PATH="/gscratch/scrubbed/fanglab/xiaoqian/images/narsad-fmri_1st_level_1.0.sif"
+CONTAINER_PATH="/gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad_remove/narsad-fmri_1st_level_1.0.sif"
 
 # =============================================================================
 # DATA SOURCE CONFIGURATIONS

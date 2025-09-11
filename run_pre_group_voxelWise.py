@@ -100,7 +100,7 @@ PROJECT_NAME = 'NARSAD'
 DATA_DIR = os.path.join(ROOT_DIR, PROJECT_NAME, 'MRI')
 DERIVATIVES_DIR = os.path.join(DATA_DIR, 'derivatives')
 SCRUBBED_DIR = os.getenv('SCRUBBED_DIR', '/scrubbed_dir')
-CONTAINER_PATH = "/gscratch/scrubbed/fanglab/xiaoqian/images/narsad-fmri_1st_level_1.0.sif"
+CONTAINER_PATH = "/gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad_remove/narsad-fmri_1st_level_1.0.sif"
 
 # Define standard reference image (MNI152 template from FSL)
 GROUP_MASK = str(tpl_get('MNI152NLin2009cAsym', resolution=2, desc='brain', suffix='mask'))
