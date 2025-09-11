@@ -178,9 +178,9 @@ def create_slurm_script(phase, cope_num, output_dir, script_dir, slurm_params, d
     container_binds = [
         "-B /gscratch/fang:/data",
         "-B /gscratch/scrubbed/fanglab/xiaoqian:/scrubbed_dir",
-        "-B /gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad/group_level_workflows.py:/app/group_level_workflows.py",
-        "-B /gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad/run_pre_group_voxelWise.py:/app/run_pre_group_voxelWise.py",
-        "-B /gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad:/app/updated"
+        "-B /gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad_remove/group_level_workflows.py:/app/group_level_workflows.py",
+        "-B /gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad_remove/run_pre_group_voxelWise.py:/app/run_pre_group_voxelWise.py",
+        "-B /gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad_remove:/app/updated"
     ]
     
     # Convert container path to host path for mkdir command
