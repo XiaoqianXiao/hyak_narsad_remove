@@ -146,7 +146,7 @@ def extract_cs_conditions(df_trial_info):
     return df_work, cs_conditions, css_conditions, csr_conditions, other_conditions
 
 
-def create_contrasts(df_trial_info, contrast_type='standard'):
+def create_contrasts(df_trial_info, contrast_type='interesting'):
     """
     Create contrasts dynamically based on DataFrame with CS-, CSS, and CSR grouping.
     
@@ -158,7 +158,7 @@ def create_contrasts(df_trial_info, contrast_type='standard'):
         df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
                                         The 'trial_type' column contains condition names,
                                         and 'onset' column is used for chronological sorting.
-        contrast_type (str): Type of contrasts to create ('standard', 'minimal', 'custom')
+        contrast_type (str): Type of contrasts to create ('interesting', 'standard', 'minimal', 'custom')
     
     Returns:
         tuple: (contrasts_list, cs_conditions, css_conditions, csr_conditions, other_conditions)
@@ -179,7 +179,12 @@ def create_contrasts(df_trial_info, contrast_type='standard'):
     
     contrasts = []
     
-    if contrast_type == 'minimal':
+    if contrast_type == 'interesting':
+        # Use the focused interesting contrasts
+        contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_interesting_contrasts(df_trial_info)
+        return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions
+    
+    elif contrast_type == 'minimal':
         # Create simple contrasts for each condition vs baseline
         for condition in all_contrast_conditions:
             contrasts.append((f'{condition}>baseline', 'T', [condition], [1]))
@@ -391,12 +396,72 @@ def create_custom_contrasts(df_trial_info, contrast_patterns):
     
     return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions
 
+
+def create_interesting_contrasts(df_trial_info):
+    """
+    Create only the interesting contrasts for NARSAD analysis.
+    
+    This function creates a focused set of contrasts that are most relevant
+    for the NARSAD study, focusing on comparisons between "others" conditions
+    and baseline, as well as between different "others" conditions.
+    
+    Args:
+        df_trial_info (pandas.DataFrame): DataFrame with columns 'trial_type', 'onset', 'duration'.
+    
+    Returns:
+        tuple: (contrasts_list, cs_conditions, css_conditions, csr_conditions, other_conditions)
+    """
+    if df_trial_info is None:
+        raise ValueError("df_trial_info is required")
+    
+    # Extract CS-, CSS, and CSR conditions with grouping
+    df_with_conditions, cs_conditions, css_conditions, csr_conditions, other_conditions = extract_cs_conditions(df_trial_info)
+    
+    # Use the conditions column for contrast generation
+    all_contrast_conditions = df_with_conditions['conditions'].unique().tolist()
+    
+    # Define the interesting contrasts
+    interesting_contrasts = [
+        ("CS-_others > FIXATION", "Other CS- trials vs baseline"),
+        ("CSS_others > FIXATION", "Other CSS trials vs baseline"),
+        ("CSR_others > FIXATION", "Other CSR trials vs baseline"),
+        ("CSS_others > CSR_others", "Other CSS trials vs Other CSR trials"),
+        ("CSR_others > CSS_others", "Other CSR trials vs Other CSS trials"),
+        ("CSS_others > CS-_others", "Other CSS trials vs Other CS- trials"),
+        ("CSR_others > CS-_others", "Other CSR trials vs Other CS- trials"),
+        ("CS-_others > CSS_others", "Other CS- trials vs Other CSS trials"),
+        ("CS-_others > CSR_others", "Other CS- trials vs Other CSR trials"),
+    ]
+    
+    contrasts = []
+    
+    for contrast_name, description in interesting_contrasts:
+        # Parse the contrast name (e.g., "CS-_others > FIXATION")
+        if ' > ' in contrast_name:
+            condition1, condition2 = contrast_name.split(' > ')
+            condition1 = condition1.strip()
+            condition2 = condition2.strip()
+            
+            # Check if both conditions exist
+            if condition1 in all_contrast_conditions and condition2 in all_contrast_conditions:
+                contrast = (contrast_name, 'T', [condition1, condition2], [1, -1])
+                contrasts.append(contrast)
+                logger.info(f"Added contrast: {contrast_name} - {description}")
+            else:
+                logger.warning(f"Contrast {contrast_name}: conditions {condition1}, {condition2} not found in {all_contrast_conditions}")
+        else:
+            logger.warning(f"Invalid contrast format: {contrast_name}")
+    
+    logger.info(f"Created {len(contrasts)} interesting contrasts")
+    
+    return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions
+
 # =============================================================================
 # CORE WORKFLOW FUNCTIONS
 # =============================================================================
 
 def first_level_wf(in_files, output_dir, df_trial_info, contrasts=None, 
-                   contrast_type='standard', contrast_patterns=None,
+                   contrast_type='interesting', contrast_patterns=None,
                    fwhm=6.0, brightness_threshold=1000, high_pass_cutoff=100,
                    use_smoothing=True, use_derivatives=True, model_serial_correlations=True):
     """
@@ -685,7 +750,7 @@ def first_level_wf_LSS(in_files, output_dir, trial_ID, df_trial_info, contrasts=
     return workflow
 
 def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None, 
-                            contrast_type='standard', contrast_patterns=None, fwhm=6.0, 
+                            contrast_type='interesting', contrast_patterns=None, fwhm=6.0, 
                             brightness_threshold=0.1, high_pass_cutoff=128, use_smoothing=True, 
                             use_derivatives=True, model_serial_correlations=True):
     """
