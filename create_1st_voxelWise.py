@@ -215,7 +215,7 @@ def create_workflow_config():
         'high_pass_cutoff': 100,
         'use_derivatives': True,
         'model_serial_correlations': True,
-        'contrast_type': 'standard'
+        'contrast_type': 'interesting'
     }
     
     logger.info(f"Created workflow configuration: {config}")
