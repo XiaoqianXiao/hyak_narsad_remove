@@ -75,6 +75,8 @@ def _bids2nipypeinfo_from_df(in_file, df_conditions, regressors_file,
 
     out_motion = Path('motion.par').resolve()
 
+    # Import the function locally to ensure it's available
+    from utils import read_csv_with_detection
     regress_data = read_csv_with_detection(regressors_file)
     np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
     if regressors_names is None:
@@ -128,6 +130,7 @@ def _bids2nipypeinfo_from_df(in_file, df_conditions, regressors_file,
             print(f"Warning: Could not find regressor columns {e}")
             runinfo.regressors = []
 
+
     return [runinfo], str(out_motion)
 
 def _bids2nipypeinfo(in_file, events_file, regressors_file,
@@ -176,6 +179,8 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
 
     out_motion = Path('motion.par').resolve()
 
+    # Import the function locally to ensure it's available
+    from utils import read_csv_with_detection
     regress_data = read_csv_with_detection(regressors_file)
     np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
     if regressors_names is None:
@@ -268,6 +273,8 @@ def _bids2nipypeinfo_lss(in_file, events_file, regressors_file,
     events = read_csv_with_detection(events_file)
     print("LOADED EVENTS COLUMNS:", events.columns.tolist())
     print(events.head())
+    # Import the function locally to ensure it's available
+    from utils import read_csv_with_detection
     regress_data = read_csv_with_detection(regressors_file)
 
     # Locate the trial of interest by ID
