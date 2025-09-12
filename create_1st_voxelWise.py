@@ -79,7 +79,7 @@ SPACE = ['MNI152NLin2009cAsym']
 
 # Output directory
 OUTPUT_DIR = os.path.join(DERIVATIVES_DIR, 'fMRI_analysis_remove')
-Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+# Directory creation moved to main() function to avoid read-only filesystem issues
 
 # =============================================================================
 # BIDS LAYOUT INITIALIZATION
@@ -211,7 +211,7 @@ def get_condition_names_from_events(events_file):
     
     logger.info(f"Created {len(contrasts)} interesting contrasts")
     
-    return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions, condition_names
+    return contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions, condition_names, df_with_conditions
 
 
 def create_workflow_config():
@@ -375,14 +375,12 @@ def run_subject_workflow(sub, inputs, work_dir, output_dir, task):
         
         # Get condition names and contrasts from events file
         events_file = inputs[sub]['events']
-        contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions, condition_names = get_condition_names_from_events(events_file)
+        contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions, condition_names, df_with_conditions = get_condition_names_from_events(events_file)
         
         logger.info(f"Processing subject {sub}, task {task}")
-        logger.info(f"df_trial_info shape: {df_trial_info.shape}")
-        logger.info(f"Trial types: {sorted(df_trial_info['trial_type'].unique())}")
         logger.info(f"Workflow config: {config}")
         
-        # Create the workflow
+        # Create the workflow with processed DataFrame
         workflow = first_level_wf(
             in_files=inputs,
             output_dir=output_dir,
@@ -393,7 +391,8 @@ def run_subject_workflow(sub, inputs, work_dir, output_dir, task):
             high_pass_cutoff=config['high_pass_cutoff'],
             use_smoothing=config['use_smoothing'],
             use_derivatives=config['use_derivatives'],
-            model_serial_correlations=config['model_serial_correlations']
+            model_serial_correlations=config['model_serial_correlations'],
+            df_conditions=df_with_conditions
         )
         
         # Set workflow base directory

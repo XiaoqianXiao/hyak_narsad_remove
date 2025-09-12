@@ -6,6 +6,7 @@ from niworkflows.interfaces.bids import DerivativesDataSink as BIDSDerivatives
 from utils import _dict_ds
 from utils import _dict_ds_lss
 from utils import _bids2nipypeinfo
+from utils import _bids2nipypeinfo_from_df
 from utils import _bids2nipypeinfo_lss
 from nipype.interfaces.fsl import SUSAN, ApplyMask, FLIRT, FILMGLS, Level1Design, FEATModel
 import logging
@@ -128,7 +129,8 @@ def extract_cs_conditions(df_trial_info):
 
 def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None, 
                    fwhm=6.0, brightness_threshold=1000, high_pass_cutoff=100,
-                   use_smoothing=True, use_derivatives=True, model_serial_correlations=True):
+                   use_smoothing=True, use_derivatives=True, model_serial_correlations=True,
+                   df_conditions=None):
     """
     Generic first-level workflow for fMRI analysis.
     
@@ -161,10 +163,17 @@ def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None,
     datasource.iterables = ('sub', sorted(in_files.keys()))
 
     # Extract motion parameters from regressors file
-    runinfo = pe.Node(niu.Function(
-        input_names=['in_file', 'events_file', 'regressors_file', 'regressors_names'],
-        function=_bids2nipypeinfo, output_names=['info', 'realign_file']),
-        name='runinfo')
+    # Use processed DataFrame if provided, otherwise use original events file
+    if df_conditions is not None:
+        runinfo = pe.Node(niu.Function(
+            input_names=['in_file', 'df_conditions', 'regressors_file', 'regressors_names'],
+            function=_bids2nipypeinfo_from_df, output_names=['info', 'realign_file']),
+            name='runinfo')
+    else:
+        runinfo = pe.Node(niu.Function(
+            input_names=['in_file', 'events_file', 'regressors_file', 'regressors_names'],
+            function=_bids2nipypeinfo, output_names=['info', 'realign_file']),
+            name='runinfo')
 
     # Set the column names to be used from the confounds file
     runinfo.inputs.regressors_names = ['dvars', 'framewise_displacement'] + \
@@ -229,7 +238,7 @@ def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None,
     # Build workflow connections
     connections = _build_workflow_connections(
         datasource, apply_mask, runinfo, l1_spec, l1_model, 
-        feat_spec, feat_fit, feat_select, preproc_output, use_smoothing
+        feat_spec, feat_fit, feat_select, preproc_output, use_smoothing, df_conditions
     )
     
     # Add data sink connections
@@ -245,7 +254,7 @@ def first_level_wf(in_files, output_dir, condition_names=None, contrasts=None,
     return workflow
 
 def _build_workflow_connections(datasource, apply_mask, runinfo, l1_spec, l1_model, 
-                              feat_spec, feat_fit, feat_select, preproc_output, use_smoothing):
+                              feat_spec, feat_fit, feat_select, preproc_output, use_smoothing, df_conditions=None):
     """
     Build workflow connections based on smoothing configuration.
     
@@ -266,7 +275,6 @@ def _build_workflow_connections(datasource, apply_mask, runinfo, l1_spec, l1_mod
     """
     connections = [
         (datasource, apply_mask, [('bold', 'in_file'), ('mask', 'mask_file')]),
-        (datasource, runinfo, [('events', 'events_file'), ('regressors', 'regressors_file')]),
         (datasource, l1_spec, [('tr', 'time_repetition')]),
         (datasource, l1_model, [('tr', 'interscan_interval')]),
         (l1_spec, l1_model, [('session_info', 'session_info')]),
@@ -274,6 +282,16 @@ def _build_workflow_connections(datasource, apply_mask, runinfo, l1_spec, l1_mod
         (feat_spec, feat_fit, [('design_file', 'design_file'), ('con_file', 'tcon_file')]),
         (feat_fit, feat_select, [('results_dir', 'base_directory')]),
     ]
+    
+    # Add runinfo connections based on whether df_conditions is provided
+    if df_conditions is not None:
+        # Use processed DataFrame
+        connections.append((datasource, runinfo, [('regressors', 'regressors_file')]))
+        # Add df_conditions as a static input
+        runinfo.inputs.df_conditions = df_conditions
+    else:
+        # Use original events file
+        connections.append((datasource, runinfo, [('events', 'events_file'), ('regressors', 'regressors_file')]))
     
     # Add smoothing connections if used
     if use_smoothing:
