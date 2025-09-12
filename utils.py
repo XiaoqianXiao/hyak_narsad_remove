@@ -78,7 +78,15 @@ def _bids2nipypeinfo_from_df(in_file, df_conditions, regressors_file,
     # Import the function locally to ensure it's available
     from utils import read_csv_with_detection
     regress_data = read_csv_with_detection(regressors_file)
-    np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
+    
+    # Handle motion columns gracefully
+    try:
+        np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
+    except KeyError as e:
+        print(f"Warning: Motion columns not found: {e}")
+        # Create empty motion file
+        np.savetxt(out_motion, np.zeros((len(regress_data), 6)), '%g')
+        print("Created empty motion file")
     if regressors_names is None:
         regressors_names = sorted(set(regress_data.columns) - set(motion_columns))
 
@@ -125,10 +133,12 @@ def _bids2nipypeinfo_from_df(in_file, df_conditions, regressors_file,
     if 'regressor_names' in bunch_fields:
         runinfo.regressor_names = regressors_names
         try:
-            runinfo.regressors = regress_data[regressors_names].values.tolist()
-        except KeyError as e:
-            print(f"Warning: Could not find regressor columns {e}")
-            runinfo.regressors = []
+            runinfo.regressors = regress_data[regressors_names]
+        except KeyError:
+            regressors_names = list(set(regressors_names).intersection(
+                set(regress_data.columns)))
+            runinfo.regressors = regress_data[regressors_names]
+        runinfo.regressors = regress_data[regressors_names].fillna(0.0).values.T.tolist()
 
 
     return [runinfo], str(out_motion)
@@ -182,7 +192,15 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
     # Import the function locally to ensure it's available
     from utils import read_csv_with_detection
     regress_data = read_csv_with_detection(regressors_file)
-    np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
+    
+    # Handle motion columns gracefully
+    try:
+        np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
+    except KeyError as e:
+        print(f"Warning: Motion columns not found: {e}")
+        # Create empty motion file
+        np.savetxt(out_motion, np.zeros((len(regress_data), 6)), '%g')
+        print("Created empty motion file")
     if regressors_names is None:
         regressors_names = sorted(set(regress_data.columns) - set(motion_columns))
 
