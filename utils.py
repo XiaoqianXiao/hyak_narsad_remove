@@ -128,7 +128,7 @@ def _bids2nipypeinfo_from_df(in_file, df_conditions, regressors_file,
             print(f"Warning: Could not find regressor columns {e}")
             runinfo.regressors = []
 
-    return runinfo
+    return [runinfo], str(out_motion)
 
 def _bids2nipypeinfo(in_file, events_file, regressors_file,
                      regressors_names=None,
