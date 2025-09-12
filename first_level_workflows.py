@@ -420,6 +420,13 @@ def create_interesting_contrasts(df_trial_info):
     # Use the conditions column for contrast generation
     all_contrast_conditions = df_with_conditions['conditions'].unique().tolist()
     
+    # Check which conditions actually have trials
+    conditions_with_trials = {}
+    for condition in all_contrast_conditions:
+        trial_count = len(df_with_conditions[df_with_conditions['conditions'] == condition])
+        conditions_with_trials[condition] = trial_count
+        logger.info(f"Condition '{condition}': {trial_count} trials")
+    
     # Define the interesting contrasts
     interesting_contrasts = [
         ("CS-_others > FIXATION", "Other CS- trials vs baseline"),
@@ -442,13 +449,19 @@ def create_interesting_contrasts(df_trial_info):
             condition1 = condition1.strip()
             condition2 = condition2.strip()
             
-            # Check if both conditions exist
-            if condition1 in all_contrast_conditions and condition2 in all_contrast_conditions:
+            # Check if both conditions exist AND have trials
+            if (condition1 in all_contrast_conditions and condition2 in all_contrast_conditions and
+                conditions_with_trials.get(condition1, 0) > 0 and conditions_with_trials.get(condition2, 0) > 0):
                 contrast = (contrast_name, 'T', [condition1, condition2], [1, -1])
                 contrasts.append(contrast)
                 logger.info(f"Added contrast: {contrast_name} - {description}")
             else:
-                logger.warning(f"Contrast {contrast_name}: conditions {condition1}, {condition2} not found in {all_contrast_conditions}")
+                missing_conditions = []
+                if condition1 not in all_contrast_conditions or conditions_with_trials.get(condition1, 0) == 0:
+                    missing_conditions.append(condition1)
+                if condition2 not in all_contrast_conditions or conditions_with_trials.get(condition2, 0) == 0:
+                    missing_conditions.append(condition2)
+                logger.warning(f"Contrast {contrast_name}: conditions {missing_conditions} missing or have no trials")
         else:
             logger.warning(f"Invalid contrast format: {contrast_name}")
     
@@ -498,6 +511,44 @@ def first_level_wf(in_files, output_dir, df_trial_info, contrasts=None,
                          name='datasource')
     datasource.inputs.in_dict = in_files
     datasource.iterables = ('sub', sorted(in_files.keys()))
+
+    # Process events file to add conditions column
+    def process_events_for_conditions(events_file, df_trial_info):
+        """Process events file and return modified events with conditions column."""
+        import pandas as pd
+        import tempfile
+        import os
+        
+        # Load the original events file
+        original_df = pd.read_csv(events_file)
+        
+        # Use our processed df_trial_info to get the conditions column
+        # Merge based on onset, duration, and trial_type to match trials
+        merged_df = original_df.merge(
+            df_trial_info[['onset', 'duration', 'trial_type', 'conditions']], 
+            on=['onset', 'duration', 'trial_type'], 
+            how='left'
+        )
+        
+        # Create a new events file with conditions as trial_type
+        modified_df = merged_df.copy()
+        modified_df['trial_type'] = merged_df['conditions']  # Replace trial_type with conditions
+        
+        # Save to temporary file
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
+        modified_df[['onset', 'duration', 'trial_type']].to_csv(temp_file.name, index=False)
+        temp_file.close()
+        
+        return temp_file.name
+    
+    process_events = pe.Node(niu.Function(
+        input_names=['events_file', 'df_trial_info'],
+        function=process_events_for_conditions,
+        output_names=['modified_events_file']),
+        name='process_events')
+    
+    # Set df_trial_info as input to process_events
+    process_events.inputs.df_trial_info = df_trial_info
 
     # Extract motion parameters from regressors file
     runinfo = pe.Node(niu.Function(
@@ -578,7 +629,7 @@ def first_level_wf(in_files, output_dir, df_trial_info, contrasts=None,
 
     # Build workflow connections
     connections = _build_workflow_connections(
-        datasource, apply_mask, runinfo, l1_spec, l1_model, 
+        datasource, process_events, apply_mask, runinfo, l1_spec, l1_model, 
         feat_spec, feat_fit, feat_select, preproc_output, use_smoothing
     )
     
@@ -664,7 +715,6 @@ def first_level_wf_LSS(in_files, output_dir, trial_ID, df_trial_info, contrasts=
 
     # Auto-generate contrasts if not provided
     if contrasts is None:
-        
         if contrast_type == 'custom' and contrast_patterns:
             contrasts, cs_conditions, css_conditions, csr_conditions, other_conditions = create_custom_contrasts(df_trial_info, contrast_patterns)
         else:
@@ -782,6 +832,44 @@ def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None,
     datasource.inputs.in_dict = inputs
     datasource.iterables = ('sub', sorted(inputs.keys()))
 
+    # Process events file to add conditions column
+    def process_events_for_conditions(events_file, df_trial_info):
+        """Process events file and return modified events with conditions column."""
+        import pandas as pd
+        import tempfile
+        import os
+        
+        # Load the original events file
+        original_df = pd.read_csv(events_file)
+        
+        # Use our processed df_trial_info to get the conditions column
+        # Merge based on onset, duration, and trial_type to match trials
+        merged_df = original_df.merge(
+            df_trial_info[['onset', 'duration', 'trial_type', 'conditions']], 
+            on=['onset', 'duration', 'trial_type'], 
+            how='left'
+        )
+        
+        # Create a new events file with conditions as trial_type
+        modified_df = merged_df.copy()
+        modified_df['trial_type'] = merged_df['conditions']  # Replace trial_type with conditions
+        
+        # Save to temporary file
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
+        modified_df[['onset', 'duration', 'trial_type']].to_csv(temp_file.name, index=False)
+        temp_file.close()
+        
+        return temp_file.name
+    
+    process_events = pe.Node(niu.Function(
+        input_names=['events_file', 'df_trial_info'],
+        function=process_events_for_conditions,
+        output_names=['modified_events_file']),
+        name='process_events')
+    
+    # Set df_trial_info as input to process_events
+    process_events.inputs.df_trial_info = df_trial_info
+
     # Extract motion parameters from regressors file
     runinfo = pe.Node(niu.Function(
         input_names=['in_file', 'events_file', 'regressors_file', 'regressors_names'],
@@ -876,23 +964,14 @@ def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None,
         for i in range(1, n_contrasts + 1)
     ]
 
+    # Build workflow connections
+    connections = _build_workflow_connections(
+        datasource, process_events, apply_mask, runinfo, l1_spec, l1_model, 
+        feat_spec, feat_fit, feat_select, preproc_output, use_smoothing
+    )
+    
     # Connect the workflow
-    workflow.connect([
-        (datasource, runinfo, [('bold', 'in_file')]),
-        (datasource, runinfo, [('events', 'events_file')]),
-        (datasource, runinfo, [('regressors', 'regressors_file')]),
-        (datasource, apply_mask, [('mask', 'mask_file')]),
-        (datasource, preproc_output, [('bold', 'in_file')]),
-        (runinfo, l1_spec, [('info', 'subject_info')]),
-        (runinfo, l1_spec, [('realign_file', 'realignment_parameters')]),
-        (preproc_output, l1_spec, [('out_file', 'functional_runs')]),
-        (l1_spec, l1_model, [('session_info', 'session_info')]),
-        (l1_model, feat_spec, [('fsf_files', 'fsf_file')]),
-        (feat_spec, feat_fit, [('fsf_file', 'design_file')]),
-        (preproc_output, feat_fit, [('out_file', 'in_file')]),
-        (feat_fit, feat_select, [('copes', 'copes')]),
-        (feat_fit, feat_select, [('varcopes', 'varcopes')]),
-    ])
+    workflow.connect(connections)
 
     # Connect data sinks
     for i, (ds_cope, ds_varcope) in enumerate(zip(ds_copes, ds_varcopes), 1):
@@ -907,13 +986,14 @@ def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None,
 # HELPER FUNCTIONS
 # =============================================================================
 
-def _build_workflow_connections(datasource, apply_mask, runinfo, l1_spec, l1_model, 
+def _build_workflow_connections(datasource, process_events, apply_mask, runinfo, l1_spec, l1_model, 
                               feat_spec, feat_fit, feat_select, preproc_output, use_smoothing):
     """
     Build workflow connections based on smoothing configuration.
     
     Args:
         datasource: Data source node
+        process_events: Events processing node
         apply_mask: Mask application node
         runinfo: Run info node
         l1_spec: Level 1 specification node
@@ -929,7 +1009,9 @@ def _build_workflow_connections(datasource, apply_mask, runinfo, l1_spec, l1_mod
     """
     connections = [
         (datasource, apply_mask, [('bold', 'in_file'), ('mask', 'mask_file')]),
-        (datasource, runinfo, [('events', 'events_file'), ('regressors', 'regressors_file')]),
+        (datasource, process_events, [('events', 'events_file')]),
+        (datasource, runinfo, [('regressors', 'regressors_file')]),
+        (process_events, runinfo, [('modified_events_file', 'events_file')]),
         (datasource, l1_spec, [('tr', 'time_repetition')]),
         (datasource, l1_model, [('tr', 'interscan_interval')]),
         (l1_spec, l1_model, [('session_info', 'session_info')]),
