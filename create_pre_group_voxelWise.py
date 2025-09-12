@@ -97,7 +97,7 @@ DEFAULT_SLURM_PARAMS = {
     'time': '04:00:00',
     'mem': '32G',
     'cpus_per_task': 4,
-    'container': '/gscratch/scrubbed/fanglab/xiaoqian/images/narsad-fmri_1st_level_1.0.sif'
+    'container': '/gscratch/scrubbed/fanglab/xiaoqian/repo/hyak_narsad_remove/narsad-fmri_1st_level_1.0.sif'
 }
 
 def get_cope_list(derivatives_dir):
@@ -295,8 +295,8 @@ Examples:
     
     # Use container paths directly since this script runs inside the container
     logger.info("Using container paths directly")
-    output_dir = '/data/NARSAD/MRI/derivatives/fMRI_analysis/groupLevel'
-    derivatives_dir = '/data/NARSAD/MRI/derivatives/fMRI_analysis'
+    output_dir = '/data/NARSAD/MRI/derivatives/fMRI_analysis_remove/groupLevel'
+    derivatives_dir = '/data/NARSAD/MRI/derivatives/fMRI_analysis_remove'
     
     # Set script directory - use default workdir/pregroup structure
     scrubbed_dir = os.getenv('SCRUBBED_DIR', '/scrubbed_dir')

@@ -143,7 +143,7 @@ OPTIONS:
     --cpus-per-task N     CPUs per task (default: $DEFAULT_CPUS_PER_TASK)
     --memory MEMORY       Memory requirement (default: $DEFAULT_MEMORY)
     --time TIME           Time limit (default: $DEFAULT_TIME)
-    --base-dir DIR        Base directory for data (default: /gscratch/fang/NARSAD/MRI/derivatives/fMRI_analysis)
+    --base-dir DIR        Base directory for data (default: /gscratch/fang/NARSAD/MRI/derivatives/fMRI_analysis_remove)
     --script-dir DIR      Directory to save SLURM scripts (default: auto-generated)
     --help                Show this help message
 
@@ -195,7 +195,7 @@ PARTITION="$DEFAULT_PARTITION"
 CPUS_PER_TASK="$DEFAULT_CPUS_PER_TASK"
 MEMORY="$DEFAULT_MEMORY"
 TIME="$DEFAULT_TIME"
-BASE_DIR="/gscratch/fang/NARSAD/MRI/derivatives/fMRI_analysis"
+BASE_DIR="/gscratch/fang/NARSAD/MRI/derivatives/fMRI_analysis_remove"
 SCRIPT_DIR=""
 
 # Parse command line arguments
@@ -356,7 +356,7 @@ apptainer exec -B /gscratch/fang:/data -B /gscratch/scrubbed/fanglab/xiaoqian:/s
     --contrast ${contrast} \\
     --analysis-type ${analysis_type} \\
     --data-source ${DATA_SOURCE} \\
-    --base-dir /data/NARSAD/MRI/derivatives/fMRI_analysis
+    --base-dir /data/NARSAD/MRI/derivatives/fMRI_analysis_remove
 
 EOF
             
