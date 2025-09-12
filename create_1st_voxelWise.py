@@ -28,6 +28,9 @@ import nipype.pipeline.engine as pe
 import nipype.interfaces.utility as niu
 import subprocess
 
+# Import functions from first_level_workflows
+from first_level_workflows import extract_cs_conditions
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
