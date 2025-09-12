@@ -519,20 +519,10 @@ def first_level_wf(in_files, output_dir, df_trial_info, contrasts=None,
         import tempfile
         import os
         
-        # Load the original events file
-        original_df = pd.read_csv(events_file)
-        
-        # Use our processed df_trial_info to get the conditions column
-        # Merge based on onset, duration, and trial_type to match trials
-        merged_df = original_df.merge(
-            df_trial_info[['onset', 'duration', 'trial_type', 'conditions']], 
-            on=['onset', 'duration', 'trial_type'], 
-            how='left'
-        )
-        
-        # Create a new events file with conditions as trial_type
-        modified_df = merged_df.copy()
-        modified_df['trial_type'] = merged_df['conditions']  # Replace trial_type with conditions
+        # Use df_trial_info directly since it already has the conditions column
+        # This avoids the merge issue and uses our processed data
+        modified_df = df_trial_info.copy()
+        modified_df['trial_type'] = df_trial_info['conditions']  # Replace trial_type with conditions
         
         # Save to temporary file
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
@@ -547,8 +537,11 @@ def first_level_wf(in_files, output_dir, df_trial_info, contrasts=None,
         output_names=['modified_events_file']),
         name='process_events')
     
-    # Set df_trial_info as input to process_events
-    process_events.inputs.df_trial_info = df_trial_info
+    # Process df_trial_info to add conditions column
+    df_with_conditions, _, _, _, _ = extract_cs_conditions(df_trial_info)
+    
+    # Set df_with_conditions as input to process_events
+    process_events.inputs.df_trial_info = df_with_conditions
 
     # Extract motion parameters from regressors file
     runinfo = pe.Node(niu.Function(
@@ -839,20 +832,10 @@ def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None,
         import tempfile
         import os
         
-        # Load the original events file
-        original_df = pd.read_csv(events_file)
-        
-        # Use our processed df_trial_info to get the conditions column
-        # Merge based on onset, duration, and trial_type to match trials
-        merged_df = original_df.merge(
-            df_trial_info[['onset', 'duration', 'trial_type', 'conditions']], 
-            on=['onset', 'duration', 'trial_type'], 
-            how='left'
-        )
-        
-        # Create a new events file with conditions as trial_type
-        modified_df = merged_df.copy()
-        modified_df['trial_type'] = merged_df['conditions']  # Replace trial_type with conditions
+        # Use df_trial_info directly since it already has the conditions column
+        # This avoids the merge issue and uses our processed data
+        modified_df = df_trial_info.copy()
+        modified_df['trial_type'] = df_trial_info['conditions']  # Replace trial_type with conditions
         
         # Save to temporary file
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
@@ -867,8 +850,11 @@ def first_level_wf_voxelwise(inputs, output_dir, df_trial_info, contrasts=None,
         output_names=['modified_events_file']),
         name='process_events')
     
-    # Set df_trial_info as input to process_events
-    process_events.inputs.df_trial_info = df_trial_info
+    # Process df_trial_info to add conditions column
+    df_with_conditions, _, _, _, _ = extract_cs_conditions(df_trial_info)
+    
+    # Set df_with_conditions as input to process_events
+    process_events.inputs.df_trial_info = df_with_conditions
 
     # Extract motion parameters from regressors file
     runinfo = pe.Node(niu.Function(
