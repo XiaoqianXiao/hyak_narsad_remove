@@ -79,7 +79,7 @@ SPACE = ['MNI152NLin2009cAsym']
 
 # Output directory
 OUTPUT_DIR = os.path.join(DERIVATIVES_DIR, 'fMRI_analysis_remove')
-# Directory creation moved to main() function to avoid read-only filesystem issues
+Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
 # =============================================================================
 # BIDS LAYOUT INITIALIZATION
