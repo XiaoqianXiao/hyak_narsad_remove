@@ -368,7 +368,7 @@ def run_subject_workflow(sub, inputs, work_dir, output_dir, task):
     """
     try:
         # Import workflows
-        from first_level_workflows import first_level_wf, first_level_wf_LSS
+        from first_level_workflows import first_level_wf
         
         # Get workflow configuration
         config = create_workflow_config()
