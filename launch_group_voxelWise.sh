@@ -12,7 +12,7 @@ echo ""
 
 # Change to scripts directory and submit all SLURM job scripts
 cd "$SCRIPTS_DIR"
-sbatch group_*.sh
+sbatch group_*randomise.sh
 
 echo ""
 echo "✅ All jobs submitted!"
