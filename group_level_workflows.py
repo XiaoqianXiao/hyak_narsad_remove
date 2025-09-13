@@ -1703,4 +1703,3 @@ def convert_cope_to_psc(cope_file, baseline_cope_file, roi_mask):
     nib.save(psc_img, psc_file)
     
     return psc_file
-
