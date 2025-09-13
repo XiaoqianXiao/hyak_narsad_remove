@@ -17,5 +17,3 @@ sbatch group_*.sh
 echo ""
 echo "✅ All jobs submitted!"
 echo "Check status with: squeue -u \$USER"
-
-
