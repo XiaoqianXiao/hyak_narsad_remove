@@ -72,9 +72,8 @@ def get_workflow_crash_dir(workflow_dir):
         logger.info(f"Using workflow directory as crash directory: {workflow_dir}")
         return workflow_dir
 
-# Set Nipype to use relative crash directories by default
-# This ensures crash files are written relative to workflow directories
-nipype.config.set('execution', 'crash_dir', '.')
+# Set Nipype to use /tmp for crash directories to avoid read-only filesystem issues
+nipype.config.set('execution', 'crash_dir', '/tmp/nipype_crashes')
 nipype.config.set('execution', 'crashfile_format', 'txt')
 nipype.config.set('execution', 'remove_unnecessary_outputs', 'false')
 
@@ -464,8 +463,9 @@ def run_data_preparation_workflow(task, contrast, group_info, copes, varcopes,
         # Set workflow parameters
         prepare_wf.base_dir = contrast_workflow_dir
         
-        # Set crash directory to be within the workflow directory
-        workflow_crash_dir = get_workflow_crash_dir(contrast_workflow_dir)
+        # Set crash directory to /tmp to avoid read-only filesystem issues
+        workflow_crash_dir = '/tmp/nipype_crashes'
+        os.makedirs(workflow_crash_dir, exist_ok=True)
         prepare_wf.config['execution']['crash_dir'] = workflow_crash_dir
         
         prepare_wf.inputs.inputnode.in_copes = copes
@@ -477,19 +477,41 @@ def run_data_preparation_workflow(task, contrast, group_info, copes, varcopes,
         # Set analysis-specific parameters
         # Note: use_guess parameter removed as it's not needed for design generation
         
-        # Clear any existing cache to avoid conflicts
+        # Clear Nipype cache to avoid file validation issues from stale cache files
         cache_dir = os.path.join(contrast_workflow_dir, prepare_wf.name)
         if os.path.exists(cache_dir):
             try:
+                import shutil
                 shutil.rmtree(cache_dir)
-                logger.info(f"Cleared existing cache: {cache_dir}")
+                logger.info(f"Cleared Nipype cache: {cache_dir}")
             except Exception as e:
-                logger.warning(f"Could not clear cache: {e}")
+                logger.warning(f"Could not clear Nipype cache: {e}")
+        
+        # Also clear any individual node caches that might cause TraitError
+        node_cache_dirs = [
+            'resample_copes',
+            'resample_varcopes', 
+            'rename_copes',
+            'rename_varcopes'
+        ]
+        for node_name in node_cache_dirs:
+            node_cache_dir = os.path.join(cache_dir, node_name)
+            if os.path.exists(node_cache_dir):
+                try:
+                    import shutil
+                    shutil.rmtree(node_cache_dir)
+                    logger.info(f"Cleared node cache: {node_cache_dir}")
+                except Exception as e:
+                    logger.warning(f"Could not clear node cache {node_name}: {e}")
         
         # Final crash directory setting to ensure it's correct
         prepare_wf.config['execution']['crash_dir'] = workflow_crash_dir
         
+        # Force removal of unnecessary outputs to avoid cache conflicts
+        prepare_wf.config['execution']['remove_unnecessary_outputs'] = True
+        
         logger.info(f"Workflow crash directory set to: {workflow_crash_dir}")
+        logger.info("Nipype cache cleared and configured to avoid file validation errors")
         
         logger.info(f"Running data preparation for task-{task}, contrast-{contrast}")
         prepare_wf.run(plugin='MultiProc', plugin_args={'n_procs': 4})
