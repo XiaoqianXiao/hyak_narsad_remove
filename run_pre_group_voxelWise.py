@@ -346,7 +346,7 @@ def load_first_level_data():
         tuple: (BIDSLayout, list of subject IDs)
     """
     try:
-        firstlevel_dir = os.path.join(DERIVATIVES_DIR, 'fMRI_analysis/firstLevel')
+        firstlevel_dir = os.path.join(DERIVATIVES_DIR, 'fMRI_analysis_remove/firstLevel')
         glayout = BIDSLayout(firstlevel_dir, validate=False, config=['bids', 'derivatives'])
         sub_list = sorted(glayout.get_subjects())
         
